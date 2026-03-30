@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Analytics Dashboard</title>
+
+  <!-- Fonts -->
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="app-header">
+    <a href="#" class="header-brand">
+      <!-- SVG Logo -->
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-label="Sales Analytics" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+        <rect x="6" y="18" width="4" height="8" rx="1.5" fill="white" opacity=".6"/>
+        <rect x="12" y="13" width="4" height="13" rx="1.5" fill="white" opacity=".8"/>
+        <rect x="18" y="8" width="4" height="18" rx="1.5" fill="white"/>
+        <path d="M7 14 L13 10 L19 7 L25 5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+        <circle cx="25" cy="5" r="2" fill="white" opacity=".9"/>
+      </svg>
+      <div>
+        <div class="header-brand-name">Sales Analytics</div>
+        <div class="header-brand-sub">Performance Commerciale</div>
+      </div>
+    </a>
+
+    <div class="header-actions">
+      <div class="loading-badge">
+        <div class="loading-dot" id="loading-dot"></div>
+        <span id="last-updated">Caricamento…</span>
+      </div>
+      <button class="btn-icon" data-theme-toggle aria-label="Cambia tema">
+        <!-- aggiornato da JS -->
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────── -->
+  <nav class="app-sidebar" aria-label="Navigazione sezioni">
+    <div class="sidebar-section-label">Dashboard</div>
+    <button class="nav-item active tab-btn" data-section="overview">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview
+    </button>
+    <button class="nav-item tab-btn" data-section="filiali">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      Performance Filiali
+    </button>
+    <button class="nav-item tab-btn" data-section="servizi">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Servizi Accessori
+    </button>
+    <button class="nav-item tab-btn" data-section="brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Brand Mix
+    </button>
+  </nav>
+
+  <!-- ── Main ───────────────────────────────────────────────── -->
+  <main class="app-main" id="app-main">
+
+    <!-- Filters Bar -->
+    <div class="filters-bar" role="search" aria-label="Filtri globali">
+      <div class="filter-group">
+        <span class="filter-label">Periodo</span>
+        <input type="date" id="filter-date-start" class="filter-input" aria-label="Data inizio">
+        <span style="font-size:var(--text-xs);color:var(--color-text-faint)">→</span>
+        <input type="date" id="filter-date-end" class="filter-input" aria-label="Data fine">
+      </div>
+      <div class="filter-divider" aria-hidden="true"></div>
+      <div class="filter-group">
+        <span class="filter-label">Marca</span>
+        <select id="filter-brand" class="filter-select" aria-label="Filtra per marca">
+          <option value="">Tutte le marche</option>
+        </select>
+      </div>
+      <div class="filter-divider" aria-hidden="true"></div>
+      <div class="filter-group">
+        <span class="filter-label">Filiale</span>
+        <select id="filter-branch" class="filter-select" aria-label="Filtra per filiale">
+          <option value="">Tutte le filiali</option>
+        </select>
+      </div>
+      <div class="filter-divider" aria-hidden="true"></div>
+      <button id="btn-reset-filters" class="btn-reset" aria-label="Azzera filtri">↺ Reset</button>
+      <div class="filter-count-badge" id="filter-record-count" aria-live="polite">—</div>
+    </div>
+
+    <!-- State overlay (loading / error) -->
+    <div id="state-overlay" class="state-overlay">
+      <div class="spinner"></div>
+      <div>
+        <div class="state-title">Caricamento dati…</div>
+        <div class="state-body">Lettura di <code>dataset_kpi_test_200_righe.csv</code></div>
+      </div>
+    </div>
+
+    <!-- Dashboard content (hidden until data loaded) -->
+    <div id="dashboard-content" style="display:none">
+
+      <!-- KPI Strip -->
+      <div class="kpi-grid" role="region" aria-label="Indicatori chiave">
+        <div class="kpi-card" style="--kpi-accent:var(--color-primary)">
+          <div class="kpi-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="kpi-label">Pratiche totali</div>
+          <div class="kpi-value" id="kpi-pratiche">—</div>
+          <div class="kpi-sub">contratti nel periodo</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--color-orange)">
+          <div class="kpi-icon" style="--kpi-accent:var(--color-orange)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div class="kpi-label">Fatturato totale</div>
+          <div class="kpi-value" id="kpi-fatturato">—</div>
+          <div class="kpi-sub">somma importi fattura</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--color-gold)">
+          <div class="kpi-icon" style="--kpi-accent:var(--color-gold)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="kpi-label">Ticket medio</div>
+          <div class="kpi-value" id="kpi-ticket">—</div>
+          <div class="kpi-sub">per pratica</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--color-blue)">
+          <div class="kpi-icon" style="--kpi-accent:var(--color-blue)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </div>
+          <div class="kpi-label">Penetrazione finanziamento</div>
+          <div class="kpi-value" id="kpi-fin-pct">—</div>
+          <div class="kpi-sub">pratiche con finanziamento</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--color-success)">
+          <div class="kpi-icon" style="--kpi-accent:var(--color-success)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="kpi-label">Pen. assicurazione</div>
+          <div class="kpi-value" id="kpi-ass-pct">—</div>
+          <div class="kpi-sub">pacchetto assicurativo</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--color-purple)">
+          <div class="kpi-icon" style="--kpi-accent:var(--color-purple)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 9H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5S16.33 9 15.5 9z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 15H10v-1.5c0-.83-.67-1.5-1.5-1.5S7 12.67 7 13.5 7.67 15 8.5 15z"/></svg>
+          </div>
+          <div class="kpi-label">Pen. estensione garanzia</div>
+          <div class="kpi-value" id="kpi-gar-pct">—</div>
+          <div class="kpi-sub">estensione garanzia</div>
+        </div>
+      </div>
+
+      <!-- Tab navigation (mobile) -->
+      <nav class="tab-nav" aria-label="Sezioni dashboard">
+        <button class="tab-btn active" data-section="overview">Overview</button>
+        <button class="tab-btn" data-section="filiali">Filiali</button>
+        <button class="tab-btn" data-section="servizi">Servizi</button>
+        <button class="tab-btn" data-section="brand">Brand Mix</button>
+      </nav>
+
+      <!-- ═══════════════════════════════════════════════════════
+           SEZIONE 1: OVERVIEW
+      ════════════════════════════════════════════════════════ -->
+      <div class="tab-panel active" id="section-overview">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Overview temporale</div>
+            <div class="section-subtitle">Andamento di fatturato e pratiche nel periodo selezionato</div>
+          </div>
+        </div>
+
+        <div class="chart-card chart-card-full">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">Fatturato & Pratiche per mese</div>
+              <div class="chart-card-subtitle">Asse sinistro: fatturato (€) · Asse destro: numero pratiche</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:320px">
+            <canvas id="chart-temporal"></canvas>
+          </div>
+          <div class="insight-box" id="insight-temporal">—</div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           SEZIONE 2: PERFORMANCE FILIALI
+      ════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="section-filiali">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Performance Filiali</div>
+            <div class="section-subtitle">Ranking, finanziamenti per filiale e per marca</div>
+          </div>
+        </div>
+
+        <!-- Ranking -->
+        <div class="chart-grid-2" style="margin-bottom:var(--space-4)">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Ranking per Pratiche</div>
+                <div class="chart-card-subtitle">Filiali ordinate per numero di contratti</div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="ranking-table" aria-label="Ranking filiali per pratiche">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Filiale</th>
+                    <th>Pratiche</th>
+                    <th>Fatturato</th>
+                  </tr>
+                </thead>
+                <tbody id="ranking-pratiche-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Ranking per Fatturato</div>
+                <div class="chart-card-subtitle">Filiali ordinate per fatturato generato</div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="ranking-table" aria-label="Ranking filiali per fatturato">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Filiale</th>
+                    <th>Fatturato</th>
+                    <th>Pratiche</th>
+                  </tr>
+                </thead>
+                <tbody id="ranking-fatturato-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="insight-box" id="insight-ranking" style="margin-bottom:var(--space-6)">—</div>
+
+        <hr class="section-divider">
+
+        <!-- Finanziamenti -->
+        <div class="section-header">
+          <div>
+            <div class="section-title">Tasso di Finanziamento</div>
+            <div class="section-subtitle">% pratiche con finanziamento = SI</div>
+          </div>
+        </div>
+
+        <div class="chart-grid-2">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Per Filiale</div>
+                <div class="chart-card-subtitle">Barre orizzontali ordinate per tasso</div>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height:min(420px, 60vh)">
+              <canvas id="chart-fin-filiale"></canvas>
+            </div>
+            <div class="insight-box" id="insight-fin-filiale">—</div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Per Marca</div>
+                <div class="chart-card-subtitle">Confronto tasso di finanziamento tra brand</div>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height:min(280px, 50vh)">
+              <canvas id="chart-fin-marca"></canvas>
+            </div>
+            <div class="insight-box" id="insight-fin-marca">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           SEZIONE 3: SERVIZI ACCESSORI
+      ════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="section-servizi">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Servizi Accessori</div>
+            <div class="section-subtitle">Valori medi, penetrazione assicurazioni ed estensioni garanzia</div>
+          </div>
+        </div>
+
+        <!-- Valori medi -->
+        <div class="chart-card" style="margin-bottom:var(--space-4)">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">Valore medio fattura vs finanziato</div>
+              <div class="chart-card-subtitle">Confronto tra ticket medio, importo medio finanziato e copertura percentuale</div>
+            </div>
+          </div>
+          <div id="valori-medi-content"></div>
+        </div>
+
+        <!-- Penetrazione totale -->
+        <div class="chart-grid-wide" style="margin-bottom:var(--space-4)">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Penetrazione totale servizi</div>
+                <div class="chart-card-subtitle">% pratiche con ciascun servizio attivo</div>
+              </div>
+            </div>
+            <div id="pene-totale-content" style="margin-bottom:var(--space-4)"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Distribuzione servizi</div>
+                <div class="chart-card-subtitle">Conteggio pratiche con ciascun servizio</div>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height:220px">
+              <canvas id="chart-pene-donut"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Penetrazione per filiale e marca -->
+        <div class="chart-grid-2">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Penetrazione per Filiale</div>
+                <div class="chart-card-subtitle">Finanziamento, assicurazione, garanzia per ogni filiale</div>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height:min(380px,60vh)">
+              <canvas id="chart-pene-filiale"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Penetrazione per Marca</div>
+                <div class="chart-card-subtitle">Confronto servizi accessori tra brand</div>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height:min(280px,50vh)">
+              <canvas id="chart-pene-marca"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           SEZIONE 4: BRAND MIX
+      ════════════════════════════════════════════════════════ -->
+      <div class="tab-panel" id="section-brand">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Brand Mix</div>
+            <div class="section-subtitle">Composizione percentuale dei brand per filiale</div>
+          </div>
+          <div class="toggle-group" role="group" aria-label="Metrica brand mix">
+            <button class="toggle-btn active" data-brand-metric="count">Volumi</button>
+            <button class="toggle-btn" data-brand-metric="fat">Fatturato</button>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom:var(--space-4)">
+          <div class="chart-card-header">
+            <div>
+              <div class="chart-card-title">Mix brand per filiale (Stacked 100%)</div>
+              <div class="chart-card-subtitle">Composizione percentuale — usa il toggle sopra per passare da volumi a fatturato</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:min(420px,65vh)">
+            <canvas id="chart-brand-mix"></canvas>
+          </div>
+          <div class="insight-box" id="insight-brand-mix">—</div>
+        </div>
+
+        <div class="chart-grid-wide">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Distribuzione brand — Totale filtrato</div>
+                <div class="chart-card-subtitle">Quota pratiche per brand nel periodo selezionato</div>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height:260px">
+              <canvas id="chart-brand-donut"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">Legenda brand</div>
+                <div class="chart-card-subtitle">Pratiche e quota % per brand</div>
+              </div>
+            </div>
+            <div class="donut-legend" id="brand-donut-legend"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /dashboard-content -->
+  </main>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>
