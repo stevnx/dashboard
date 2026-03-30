@@ -70,7 +70,7 @@ function parseCSV(text) {
 async function loadData() {
   showState('loading');
   try {
-    const resp = await fetch(DATA_URL);
+    const resp = await fetch(DATA_URL + '?nocache=' + Date.now());
     if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
     const text = await resp.text();
     if (!text.trim()) throw new Error('Il file CSV è vuoto.');
